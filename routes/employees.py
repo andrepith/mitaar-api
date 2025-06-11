@@ -21,3 +21,14 @@ async def create_employee(employee: Employee):
     response = supabase.table("employees").insert(data).execute()
     return response.data
 
+@router.patch("/employees/{employee_id}")
+async def update_employee(employee_id: int, employee: EmployeeUpdate):
+    """Update an existing employee's details."""
+    data = {k: v for k, v in employee.model_dump().items() if v is not None}
+    # Convert 'created_at' to ISO format if needed
+    if "created_at" in data and hasattr(data["created_at"], "isoformat"):
+        data["created_at"] = data["created_at"].isoformat()
+    if not data:
+        return {"message": "No data to update"}
+    response = supabase.table("employees").update(data).eq("id", employee_id).execute()
+    return response.data
