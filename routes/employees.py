@@ -45,3 +45,11 @@ async def replace_employee(employee_id: int, employee: Employee):
         return {"message": "No data to update"}
     response = supabase.table("employees").update(data).eq("id", employee_id).execute()
     return sanitize_employees(response.data)
+
+@router.delete("/employees/{employee_id}")
+async def delete_employee(employee_id: int):
+    """Delete an employee from the database."""
+    response = supabase.table("employees").delete().eq("id", employee_id).execute()
+    if response.data:
+        return {"message": "Employee deleted successfully"}
+    return {"message": "Employee not found or already deleted"}
