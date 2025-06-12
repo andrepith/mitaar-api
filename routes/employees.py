@@ -35,8 +35,17 @@ async def get_employees(
         "total_data": total_data,
         "data": employees
     }
+    
+@router.get("/employee/{employee_id}")
+async def get_employee(employee_id: int):
+    """Fetch a single employee by ID."""
+    response = supabase.table("employees").select("*").eq("id", employee_id).execute()
+    if not response.data:
+        return {"message": "Employee not found"}
+    sanitized = sanitize_employees(response.data)
+    return sanitized[0] if sanitized else {"message": "Employee not found"}
 
-@router.post("/employees")
+@router.post("/employee")
 async def create_employee(employee: Employee):
     """Add a new employee to the database."""
     data = employee.model_dump()
@@ -46,7 +55,7 @@ async def create_employee(employee: Employee):
     response = supabase.table("employees").insert(data).execute()
     return sanitize_employees(response.data)
 
-@router.patch("/employees/{employee_id}")
+@router.patch("/employee/{employee_id}")
 async def update_employee(employee_id: int, employee: EmployeeUpdate):
     """Update an existing employee's details."""
     data = {k: v for k, v in employee.model_dump().items() if v is not None}
@@ -58,7 +67,7 @@ async def update_employee(employee_id: int, employee: EmployeeUpdate):
     response = supabase.table("employees").update(data).eq("id", employee_id).execute()
     return sanitize_employees(response.data)
 
-@router.put("/employees/{employee_id}")
+@router.put("/employee/{employee_id}")
 async def replace_employee(employee_id: int, employee: Employee):
     """Replace an existing employee's details (PUT). Ignores 'created_at'."""
     data = {k: v for k, v in employee.model_dump().items() if v is not None and k != "created_at"}
@@ -67,7 +76,7 @@ async def replace_employee(employee_id: int, employee: Employee):
     response = supabase.table("employees").update(data).eq("id", employee_id).execute()
     return sanitize_employees(response.data)
 
-@router.delete("/employees/{employee_id}")
+@router.delete("/employee/{employee_id}")
 async def delete_employee(employee_id: int):
     """Delete an employee from the database."""
     response = supabase.table("employees").delete().eq("id", employee_id).execute()
