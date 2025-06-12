@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from models.employees import Employee
 from models.employees import EmployeeUpdate
 from config.supabase_client import supabase
@@ -10,10 +10,31 @@ def sanitize_employees(data):
     return [{k: v for k, v in emp.items() if k != "password"} for emp in data]
 
 @router.get("/employees")
-async def get_employees():
-    """Fetch all employees from the database."""
-    response = supabase.table("employees").select("*").execute()
-    return sanitize_employees(response.data)
+async def get_employees(
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(10, ge=1, le=100, description="Number of employees per page"),
+):
+    """Fetch employees with pagination and metadata."""
+    offset = (page - 1) * limit
+    start = offset
+    end = offset + limit - 1
+
+    # Get total count
+    count_response = supabase.table("employees").select("id", count="exact").execute()
+    total_data = count_response.count or 0
+
+    # Get current page data
+    response = supabase.table("employees").select("*").range(start, end).execute()
+    employees = sanitize_employees(response.data)
+
+    total_pages = (total_data + limit - 1) // limit if limit else 1
+
+    return {
+        "current_page": page,
+        "total_pages": total_pages,
+        "total_data": total_data,
+        "data": employees
+    }
 
 @router.post("/employees")
 async def create_employee(employee: Employee):
