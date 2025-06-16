@@ -10,3 +10,11 @@ import jwt
 import os
 
 router = APIRouter()
+
+# Load environment variables
+load_dotenv()
+
+# Configuration constants
+SECRET_KEY = os.getenv("SECRET_KEY", "changeme")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
