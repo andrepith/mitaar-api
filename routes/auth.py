@@ -22,3 +22,15 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60
 # Security setup
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+# Utility Functions
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+def create_access_token(email: str) -> str:
+    expiration = datetime.now(datetime.timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode = {"sub": email, "exp": expiration}
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
