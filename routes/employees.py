@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
 from models.employees import Employee, EmployeeUpdate
 from config.supabase_client import supabase
+from routes.auth import require_level, can_access_employee
 
 router = APIRouter()
 
@@ -18,7 +19,9 @@ def sanitize_single_employee(data: list[dict]) -> dict:
 async def get_employees(
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(10, ge=1, le=100, description="Employees per page"),
-):
+    user: dict = Depends(require_level(1)),
+    ):
+    
     """Fetch employees with pagination and metadata."""
     offset = (page - 1) * limit
 
@@ -41,13 +44,19 @@ async def get_employees(
     }
 
 @router.get("/employee/{employee_id}")
-async def get_employee(employee_id: int):
+async def get_employee(
+    employee_id: int, 
+    user: dict = Depends(can_access_employee),
+    ):
     """Fetch a single employee by ID."""
     response = supabase.table("employees").select("*").eq("id", employee_id).execute()
     return sanitize_single_employee(response.data)
 
 @router.post("/employee")
-async def create_employee(employee: Employee):
+async def create_employee(
+    employee: Employee,
+    user: dict = Depends(can_access_employee)
+    ):
     """Add a new employee to the database."""
     data = employee.model_dump()
     if "created_at" in data and hasattr(data["created_at"], "isoformat"):
@@ -57,7 +66,11 @@ async def create_employee(employee: Employee):
     return sanitize_single_employee(response.data)
 
 @router.patch("/employee/{employee_id}")
-async def update_employee(employee_id: int, employee: EmployeeUpdate):
+async def update_employee(
+    employee_id: int, 
+    employee: EmployeeUpdate,
+    user: dict = Depends(can_access_employee)
+    ):
     """Update an existing employee's details."""
     data = {k: v for k, v in employee.model_dump().items() if v is not None}
     if "created_at" in data and hasattr(data["created_at"], "isoformat"):
@@ -70,7 +83,11 @@ async def update_employee(employee_id: int, employee: EmployeeUpdate):
     return sanitize_single_employee(response.data)
 
 @router.put("/employee/{employee_id}")
-async def replace_employee(employee_id: int, employee: Employee):
+async def replace_employee(
+    employee_id: int, 
+    employee: Employee,
+    user: dict = Depends(can_access_employee)
+    ):
     """Replace an employee's details completely (excluding created_at)."""
     data = {
         k: v for k, v in employee.model_dump().items()
@@ -84,7 +101,10 @@ async def replace_employee(employee_id: int, employee: Employee):
     return sanitize_single_employee(response.data)
 
 @router.delete("/employee/{employee_id}")
-async def delete_employee(employee_id: int):
+async def delete_employee(
+    employee_id: int,
+    user: dict = Depends(require_level(1))
+    ):
     """Delete an employee by ID."""
     response = supabase.table("employees").delete().eq("id", employee_id).execute()
     if response.data:
