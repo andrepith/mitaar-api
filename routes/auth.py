@@ -97,3 +97,21 @@ async def login_employee(email: EmailStr, password: str):
 async def logout_employee():
     """Logout an employee (no-op for stateless JWT)."""
     return {"message": "Logged out successfully"}
+
+@router.post("/refresh-token")
+async def refresh_token(token: str = Depends(oauth2_scheme)):
+    """Refresh the JWT token."""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email = payload.get("sub")
+        if not email:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+        new_token = create_access_token(email)
+        return {"access_token": new_token, "token_type": "bearer"}
+
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired")
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
