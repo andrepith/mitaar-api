@@ -92,3 +92,8 @@ async def login_employee(email: EmailStr, password: str):
 
     token = create_access_token(employee["email"])
     return {"access_token": token, "token_type": "bearer"}
+
+@router.post("/logout")
+async def logout_employee():
+    """Logout an employee (no-op for stateless JWT)."""
+    return {"message": "Logged out successfully"}
