@@ -34,3 +34,7 @@ def create_access_token(email: str) -> str:
     expiration = datetime.now(datetime.timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode = {"sub": email, "exp": expiration}
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+def get_employee_by_email(email: str) -> dict | None:
+    response = supabase.table("employees").select("*").eq("email", email).execute()
+    return response.data[0] if response.data else None
