@@ -64,3 +64,18 @@ def require_level(min_level: int):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient privileges")
         return user
     return level_checker
+
+@router.post("/register", response_model=EmployeeRegister)
+async def register_employee(employee: EmployeeRegister):
+    """Register a new employee."""
+    if get_employee_by_email(employee.email):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+
+    employee_data = employee.model_dump()
+    employee_data["password"] = hash_password(employee.password)
+
+    response = supabase.table("employees").insert(employee_data).execute()
+    if not response.data:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to register employee")
+
+    return response.data[0]
