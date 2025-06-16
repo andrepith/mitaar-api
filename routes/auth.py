@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import EmailStr
 from passlib.context import CryptContext
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 from config.supabase_client import supabase
 from models.employees import EmployeeRegister
@@ -31,7 +31,7 @@ def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 def create_access_token(email: str) -> str:
-    expiration = datetime.now(datetime.timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expiration = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode = {"sub": email, "exp": expiration}
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -64,6 +64,15 @@ def require_level(min_level: int):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient privileges")
         return user
     return level_checker
+
+def can_access_employee(employee_id: int, user: dict = Depends(get_current_user)):
+    # Allow if user is admin (level >= 1) or editing their own record
+    if user.get("level", 0) >= 1 or user.get("id") == employee_id:
+        return user
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Not enough privileges to edit this employee."
+    )
 
 @router.post("/register", response_model=EmployeeRegister)
 async def register_employee(employee: EmployeeRegister):
