@@ -8,6 +8,7 @@ from config.supabase_client import supabase
 from models.employees import EmployeeRegister
 import jwt
 import os
+from typing import Optional
 
 router = APIRouter()
 
@@ -35,7 +36,7 @@ def create_access_token(email: str) -> str:
     to_encode = {"sub": email, "exp": expiration}
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-def get_employee_by_email(email: str) -> dict | None:
+def get_employee_by_email(email: str) -> Optional[dict]:
     response = supabase.table("employees").select("*").eq("email", email).execute()
     return response.data[0] if response.data else None
 
