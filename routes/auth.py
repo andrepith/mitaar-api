@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import EmailStr
 from passlib.context import CryptContext
@@ -42,7 +42,19 @@ def get_employee_by_email(email: str) -> Optional[dict]:
     return response.data[0] if response.data else None
 
 # Dependencies
-def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
+def get_current_user(request: Request) -> dict:
+    # Try to get token from Authorization header
+    auth_header = request.headers.get("authorization")
+    token = None
+    if auth_header and auth_header.lower().startswith("bearer "):
+        token = auth_header[7:]
+    else:
+        # Fallback to cookie
+        token = request.cookies.get("access_token")
+
+    if not token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email = payload.get("sub")
@@ -92,8 +104,8 @@ async def register_employee(employee: EmployeeRegister):
     return response.data[0]
 
 @router.post("/login")
-async def login_employee(login: LoginRequest):
-    """Login an employee and return a JWT token."""
+async def login_employee(login: LoginRequest, response: Response):
+    """Login an employee and return a JWT token in an httpOnly cookie."""
     employee = get_employee_by_email(login.email)
     if not employee:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Employee not found")
@@ -102,11 +114,21 @@ async def login_employee(login: LoginRequest):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     token = create_access_token(employee["email"])
-    return {"access_token": token, "token_type": "bearer"}
+    # Set the token in an httpOnly cookie
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        secure=True,  # Set to True in production (HTTPS)
+        samesite="lax",  # or "strict" for more security
+        max_age=60*60,  # 1 hour
+        path="/"
+    )
+    return {"message": "Login successful"}
 
 @router.post("/logout")
-async def logout_employee():
-    """Logout an employee (no-op for stateless JWT)."""
+async def logout_employee(response: Response):
+    Response.delete_cookie("access_token")
     return {"message": "Logged out successfully"}
 
 @router.post("/refresh-token")
