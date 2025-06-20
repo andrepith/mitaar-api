@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 from config.supabase_client import supabase
 from models.employees import EmployeeRegister
+from models.employees import LoginRequest
 import jwt
 import os
 from typing import Optional
@@ -91,13 +92,13 @@ async def register_employee(employee: EmployeeRegister):
     return response.data[0]
 
 @router.post("/login")
-async def login_employee(email: EmailStr, password: str):
+async def login_employee(login: LoginRequest):
     """Login an employee and return a JWT token."""
-    employee = get_employee_by_email(email)
+    employee = get_employee_by_email(login.email)
     if not employee:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Employee not found")
 
-    if not verify_password(password, employee["password"]):
+    if not verify_password(login.password, employee["password"]):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     token = create_access_token(employee["email"])

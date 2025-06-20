@@ -20,3 +20,7 @@ class EmployeeRegister(BaseModel):
     name: str = Field(..., min_length=1, max_length=100, description="Full name of the employee")
     email: EmailStr = Field(..., description="Employee's email address")
     password: str = Field(..., min_length=8, description="Password for the employee account")
+    
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
